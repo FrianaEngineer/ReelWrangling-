@@ -87,6 +87,7 @@ class CollectionGroup:
     extraction_method: str
     expected_titles: List[str]
     constituents: List[ConstituentSpec] = field(default_factory=list)
+    collection_director: str = ""
 
 
 def load_overrides(path: Path) -> Dict[tuple, dict]:
@@ -225,6 +226,7 @@ def discover_collection_groups(nc_rows: List[dict], overrides_path: Path) -> Lis
                     extraction_method=method,
                     expected_titles=expected or [child.film_title for child in children],
                     constituents=children if children else _virtual_constituents(expected),
+                    collection_director=director.strip(),
                 )
             )
             index = child_index
@@ -271,6 +273,7 @@ def discover_collection_groups(nc_rows: List[dict], overrides_path: Path) -> Lis
                     extraction_method=method,
                     expected_titles=expected,
                     constituents=children,
+                    collection_director=director.strip(),
                 )
             )
             index = child_index
@@ -299,6 +302,7 @@ def discover_collection_groups(nc_rows: List[dict], overrides_path: Path) -> Lis
                         extraction_method=method + "+single_row_box",
                         expected_titles=expected,
                         constituents=constituents,
+                        collection_director=director.strip(),
                     )
                 )
             index += 1

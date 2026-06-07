@@ -124,12 +124,12 @@ class UrlMatch:
 def parse_args() -> argparse.Namespace:
     repo_root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(description="Scrape films from Criterion Eclipse Series box set pages.")
-    parser.add_argument("--input", type=Path, default=repo_root / "outputs" / "eclipse_series_titles.csv")
-    parser.add_argument("--output", type=Path, default=repo_root / "outputs" / "criterion_eclipse_movies.csv")
-    parser.add_argument("--failures", type=Path, default=repo_root / "outputs" / "criterion_eclipse_failures.csv")
-    parser.add_argument("--url-cache", type=Path, default=repo_root / "outputs" / "criterion_eclipse_url_cache.csv")
+    parser.add_argument("--input", type=Path, default=repo_root / "data" / "criterion" / "eclipse_series_titles.csv")
+    parser.add_argument("--output", type=Path, default=repo_root / "data" / "output" / "criterion_eclipse_movies.csv")
+    parser.add_argument("--failures", type=Path, default=repo_root / "data" / "output" / "criterion_eclipse_failures.csv")
+    parser.add_argument("--url-cache", type=Path, default=repo_root / "data" / "output" / "criterion_eclipse_url_cache.csv")
     parser.add_argument("--url-source-html", type=Path, default=None)
-    parser.add_argument("--imdb-hints", type=Path, default=repo_root / "outputs" / "criterion_eclipse_imdb_hints.csv")
+    parser.add_argument("--imdb-hints", type=Path, default=repo_root / "data" / "output" / "criterion_eclipse_imdb_hints.csv")
     parser.add_argument("--headless", type=parse_bool, default=True)
     parser.add_argument("--page-timeout", type=int, default=30)
     parser.add_argument("--search-timeout", type=int, default=20)
@@ -499,7 +499,13 @@ def load_collection_page(
     progress_label: str,
 ) -> None:
     wait_before_collection_fetch(collection_url, progress_label)
-    driver.get(collection_url)
+    try:
+        driver.get(collection_url)
+    except TimeoutException:
+        # Page-load timeout fires when slow resources (images, JS) haven't
+        # finished, but the DOM content including Films In This Set is already
+        # rendered. Fall through to the explicit wait below.
+        pass
     wait = WebDriverWait(driver, timeout)
     normalized_collection_title = normalize_title(collection_title)
 

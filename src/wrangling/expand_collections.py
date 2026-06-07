@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
@@ -115,6 +115,43 @@ def load_basics_for_tconsts(basics_path: Path, tconsts: Set[str]) -> Dict[str, d
     return found
 
 
+def infer_group_director(
+    group: "CollectionGroup",
+    grouped_matches: Dict[str, List[ImdbCandidate]],
+    director_by_tconst: Dict[str, List[str]],
+) -> str:
+    """
+    Determine the dominant director for a collection by plurality vote.
+
+    Priority:
+    1. The most common explicit film_director already on constituent specs
+       (populated from the Criterion CSV for spineless catalog children).
+    2. The collection_director carried on the group (from the container row).
+    3. Plurality vote across the top-5 IMDb candidates for every constituent
+       title — the director who appears most often across the candidate pool
+       is assumed to be the shared collection director.
+    """
+    explicit: Counter[str] = Counter()
+    for c in group.constituents:
+        for name in (c.film_director or "").split(","):
+            name = name.strip()
+            if name:
+                explicit[name] += 1
+    if explicit:
+        return explicit.most_common(1)[0][0]
+
+    if group.collection_director:
+        return group.collection_director
+
+    imdb_votes: Counter[str] = Counter()
+    for c in group.constituents:
+        title = (c.film_title or "").strip()
+        for cand in grouped_matches.get(title, [])[:5]:
+            for director in director_by_tconst.get(cand.imdb_id, []):
+                imdb_votes[director] += 1
+    return imdb_votes.most_common(1)[0][0] if imdb_votes else ""
+
+
 def main() -> None:
     args = parse_args()
     ensure_output_dir(args.films_output.parent)
@@ -151,6 +188,7 @@ def main() -> None:
     resolved_rows: List[dict] = []
 
     for g in groups:
+        group_director = infer_group_director(g, grouped_matches, director_by_tconst)
         missing = 0
         for seq, c in enumerate(g.constituents, start=1):
             ov = overrides.get((g.collection_source_id, seq), {})
@@ -160,7 +198,7 @@ def main() -> None:
             cands = grouped_matches.get(title_for_match, [])
             best = pick_best_candidate(
                 title_for_match,
-                c.film_director,
+                c.film_director or group_director,
                 c.film_year,
                 cands,
                 director_by_tconst,
