@@ -17,3 +17,7 @@ data/output/*
 .DS_Store
 __pycache__/
 .ipynb_checkpoints/
+
+posters/
+*.part
+.env
